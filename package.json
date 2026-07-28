@@ -1,0 +1,14 @@
+{
+  "name": "irsanai-live-share",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IrsanAI Live Share — local-first, session-driven live sharing. Session domain scaffold.",
+  "scripts": {
+    "build": "tsc -p .",
+    "demo": "npm run build && node dist/demo.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^20.14.10"
+  }
+}
