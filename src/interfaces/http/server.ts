@@ -11,6 +11,7 @@ import { InMemoryShareRepository } from "../../infrastructure/persistence/InMemo
 import { InMemoryEventBus } from "../../infrastructure/events/InMemoryEventBus";
 import { CryptoTokenGenerator } from "../../infrastructure/security/CryptoTokenGenerator";
 import { SystemClock } from "../../infrastructure/time/SystemClock";
+import { PhotonPlaceSearchProvider } from "../../infrastructure/geocoding/PhotonPlaceSearchProvider";
 
 import { Position } from "../../domain/tracking/Position";
 import { IllegalTransitionError } from "../../domain/session/IllegalTransitionError";
@@ -35,6 +36,7 @@ const sessions = new SessionApplicationService(sessionRepository, eventBus);
 const tracking = new TrackingApplicationService(trackingRepository, eventBus);
 const sharing = new SharingApplicationService(shareRepository, new CryptoTokenGenerator(), clock, eventBus);
 const viewer = new ViewerApplicationService(sharing, sessionRepository, trackingRepository, clock);
+const placeSearch = new PhotonPlaceSearchProvider();
 
 eventBus.subscribe((event) => {
   // Server-side log, mirrors the demo's console output so you can watch it live in the terminal too.
@@ -145,6 +147,15 @@ app.post(
     const position = new Position(Number(latitude), Number(longitude), 10, clock.now());
     await tracking.setDestination(requireParam(req, "id"), position);
     res.json({ ok: true });
+  })
+);
+
+app.get(
+  "/api/places/search",
+  asyncRoute(async (req, res) => {
+    const query = typeof req.query.q === "string" ? req.query.q : "";
+    const suggestions = await placeSearch.search(query);
+    res.json(suggestions);
   })
 );
 

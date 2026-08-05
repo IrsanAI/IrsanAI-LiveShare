@@ -65,6 +65,32 @@ export function renderHostPage(data: InitialHostData): string {
     border-radius: 10px; padding: 10px 12px; font-family: "JetBrains Mono", monospace; font-size: 14px;
     margin-bottom: 10px;
   }
+  input[type="text"] {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 12px 14px; font-family: "Inter", sans-serif; font-size: 14px;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--move); }
+  .suggestions { margin-top: 6px; border-radius: 12px; overflow: hidden; }
+  .suggestions:empty { display: none; }
+  .suggestion-row {
+    padding: 12px 14px; font-size: 13px; cursor: pointer;
+    background: var(--surface-2); border-bottom: 1px solid var(--line);
+  }
+  .suggestions .suggestion-row:first-child { border-radius: 12px 12px 0 0; }
+  .suggestions .suggestion-row:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
+  .suggestion-row.active, .suggestion-row:hover { background: rgba(255,138,61,0.14); }
+  .coord-tag {
+    display: block; margin-top: 3px; font-family: "JetBrains Mono", monospace;
+    color: var(--move); font-size: 11px;
+  }
+  .selected-dest {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 12px 14px; background: var(--surface-2); border-radius: 10px; margin-bottom: 10px; font-size: 13px;
+  }
+  .link-btn {
+    background: none; border: none; color: var(--calm); font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 0; width: auto; margin: 0; text-decoration: underline; flex-shrink: 0;
+  }
   .share-url {
     font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--calm);
     word-break: break-all; padding: 12px 14px; background: var(--surface-2);
@@ -98,10 +124,13 @@ export function renderHostPage(data: InitialHostData): string {
 
   <div class="card">
     <label>Ziel setzen (optional, für ETA)</label>
-    <input type="number" step="0.0001" id="destLat" placeholder="Breitengrad, z. B. 48.1401" />
-    <input type="number" step="0.0001" id="destLng" placeholder="Längengrad, z. B. 11.5802" />
-    <div class="hint">Zum Testen: deine aktuelle Position + ca. 0.002 auf Breiten- oder Längengrad ≈ 150–200 m entfernt.</div>
-    <button class="btn-secondary" id="destBtn">Ziel setzen</button>
+    <input type="text" id="destQuery" placeholder="Adresse oder Ort eingeben …" autocomplete="off" />
+    <div class="suggestions" id="destSuggestions"></div>
+    <div class="selected-dest" id="selectedDest" style="display:none">
+      <span id="selectedDestLabel"></span>
+      <button type="button" class="link-btn" id="clearDestBtn">Ändern</button>
+    </div>
+    <div class="hint">Geht auch direkt: Koordinaten als "48.1401, 11.5802" eingeben.</div>
   </div>
 
   <footer id="footer"></footer>
@@ -201,15 +230,115 @@ export function renderHostPage(data: InitialHostData): string {
     });
   });
 
-  document.getElementById("destBtn").addEventListener("click", function () {
-    var lat = parseFloat(document.getElementById("destLat").value);
-    var lng = parseFloat(document.getElementById("destLng").value);
-    if (isNaN(lat) || isNaN(lng)) { return; }
-    api("/destination", { latitude: lat, longitude: lng }).then(function () {
-      document.getElementById("destBtn").textContent = "Ziel gesetzt ✓";
-      setTimeout(function () { document.getElementById("destBtn").textContent = "Ziel setzen"; }, 1500);
+  (function () {
+    var destQuery = document.getElementById("destQuery");
+    var suggestionsEl = document.getElementById("destSuggestions");
+    var selectedDest = document.getElementById("selectedDest");
+    var selectedDestLabel = document.getElementById("selectedDestLabel");
+    var clearDestBtn = document.getElementById("clearDestBtn");
+
+    var COORD_RE = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
+    var debounceTimer = null;
+    var currentSuggestions = [];
+    var activeIndex = -1;
+    var searchSeq = 0;
+
+    function clearSuggestions() {
+      suggestionsEl.innerHTML = "";
+      currentSuggestions = [];
+      activeIndex = -1;
+    }
+
+    function renderSuggestions() {
+      suggestionsEl.innerHTML = "";
+      currentSuggestions.forEach(function (s, i) {
+        var row = document.createElement("div");
+        row.className = "suggestion-row" + (i === activeIndex ? " active" : "");
+        row.textContent = s.label;
+        if (s.isCoordinate) {
+          var tag = document.createElement("span");
+          tag.className = "coord-tag";
+          tag.textContent = "Direkte Koordinaten";
+          row.appendChild(tag);
+        }
+        row.addEventListener("click", function () { selectSuggestion(i); });
+        suggestionsEl.appendChild(row);
+      });
+    }
+
+    function selectSuggestion(i) {
+      var s = currentSuggestions[i];
+      if (!s) { return; }
+      api("/destination", { latitude: s.latitude, longitude: s.longitude }).then(function () {
+        selectedDestLabel.textContent = s.label;
+        selectedDest.style.display = "flex";
+        destQuery.style.display = "none";
+        clearSuggestions();
+      });
+    }
+
+    destQuery.addEventListener("input", function () {
+      var value = destQuery.value;
+      clearTimeout(debounceTimer);
+
+      var coordMatch = value.match(COORD_RE);
+      if (coordMatch) {
+        currentSuggestions = [{
+          label: "Ziel: " + coordMatch[1] + ", " + coordMatch[2],
+          latitude: parseFloat(coordMatch[1]),
+          longitude: parseFloat(coordMatch[2]),
+          isCoordinate: true,
+        }];
+        activeIndex = 0;
+        renderSuggestions();
+        return;
+      }
+
+      if (value.trim().length < 3) {
+        clearSuggestions();
+        return;
+      }
+
+      debounceTimer = setTimeout(function () {
+        var seq = ++searchSeq;
+        fetch("/api/places/search?q=" + encodeURIComponent(value))
+          .then(function (res) { return res.json(); })
+          .then(function (results) {
+            if (seq !== searchSeq) { return; } // a newer keystroke already fired — drop this stale response
+            currentSuggestions = results;
+            activeIndex = results.length > 0 ? 0 : -1;
+            renderSuggestions();
+          })
+          .catch(function () { /* search hiccup — leave the field usable, just no suggestions this round */ });
+      }, 300);
     });
-  });
+
+    destQuery.addEventListener("keydown", function (e) {
+      if (currentSuggestions.length === 0) { return; }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, currentSuggestions.length - 1);
+        renderSuggestions();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        renderSuggestions();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        selectSuggestion(activeIndex >= 0 ? activeIndex : 0);
+      } else if (e.key === "Escape") {
+        clearSuggestions();
+      }
+    });
+
+    clearDestBtn.addEventListener("click", function () {
+      selectedDest.style.display = "none";
+      destQuery.style.display = "block";
+      destQuery.value = "";
+      destQuery.focus();
+      clearSuggestions();
+    });
+  })();
 
   document.getElementById("footer").textContent = "Session " + data.sessionId;
 })();

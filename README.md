@@ -61,6 +61,9 @@ other devices on your network can reach it.
    permission — allow it. It calls `activate`, then starts pushing your
    *real* device GPS to the session (`navigator.geolocation.watchPosition`,
    throttled the same way any GPS source is, via `GpsThrottlePolicy`).
+   Optionally set a destination in the same card below — type a place name
+   for live search suggestions, or type coordinates directly as
+   `48.1401, 11.5802`; either way it's the same `/destination` call.
 3. Copy the share link shown on that page. To open it from your **phone**,
    both devices need to be on the same Wi-Fi, and the phone needs your
    laptop's LAN IP instead of `localhost` (localhost on the phone means the
@@ -128,6 +131,22 @@ transitions, throttling, ETA math, and token validity all still happen in
 `domain/` exactly as they do for the console demo — the server is a second
 front door onto the same building, not a different building.
 
+**Place search is a port too, for the same reason maps are.** The directive's
+Map Philosophy says changing map provider must never touch domain code —
+`domain/routing/PlaceSearchProvider.ts` extends that same idea to *finding*
+a place, not just rendering one. `infrastructure/geocoding/
+PhotonPlaceSearchProvider.ts` is the current adapter (Photon/OSM — free, no
+API key, and unlike raw Nominatim, explicitly built for type-ahead search).
+`GET /api/places/search` in the HTTP layer calls the port directly with no
+application-service layer in between — there's no invariant to protect in
+"proxy a text query to a geocoder," so adding one would be ceremony, not
+architecture. The destination field on the host page accepts *either* a
+place search or raw "lat, lng" typed directly — both end up calling the same
+existing `/api/sessions/:id/destination` endpoint, which never changed.
+Track still only holds one destination; multiple waypoints would mean an
+ordered list on the aggregate and a redefined ETA (next stop vs. final) —
+a real extension, not implemented here, flagged in case you want it next.
+
 **Personality and rendering stay out of domain logic.** No domain event
 carries copy. `PersonalityTheme.ts` maps state → microcopy per theme;
 `renderViewerScreen`/`renderViewerPage`/`renderHostPage` format a
@@ -147,10 +166,19 @@ decision — they only display one already made in `domain/`.
 - `req.params.id` / `req.params.token` under `noUncheckedIndexedAccess` type
   as `string | undefined`, not `string` — added a small `requireParam()`
   helper instead of loosening the tsconfig for the whole project.
+- The place search adapter is verified with a mocked Photon response (real
+  data, real GeoJSON shape, checked lon/lat ordering and label fallbacks) —
+  the sandbox this was built in can't reach `photon.komoot.io` itself
+  (network allowlist), so the live call is untested from here. It's a
+  public, unauthenticated, well-documented API; should work as-is on your
+  laptop's normal internet connection, but it's the one piece worth an
+  extra look when you test.
 
 ## Not yet built
 
-`routing` (turn-by-turn / path data), `storage` beyond in-memory, the real
-map renderer, and a WebSocket/push transport (the server currently uses
-client-side polling every 3s — simple and works fine for testing, but a real
-app would want push so the phone isn't asking "anything new?" on a timer).
+`routing` beyond place search (turn-by-turn / path data), `storage` beyond
+in-memory, the real map renderer, and a WebSocket/push transport (the server
+currently uses client-side polling every 3s — simple and works fine for
+testing, but a real app would want push so the phone isn't asking "anything
+new?" on a timer). Multiple destinations/waypoints — see the design-decisions
+note above.
