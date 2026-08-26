@@ -82,6 +82,32 @@ If you'd rather host *from* the phone (using the phone's own GPS) and watch
 from the laptop, same flow, just swap which device opens `/` vs. the share
 link — nothing in the code cares which physical device plays which role.
 
+### If the host page says "Only secure origins are allowed"
+
+Browsers only expose `navigator.geolocation` on HTTPS (or `localhost`
+itself). `http://localhost:3000` on the laptop counts as secure; opening the
+LAN IP from a phone (`http://192.168.x.x:3000`) does not, so **hosting**
+(sending GPS) from that URL will fail this way — **viewing** a link from the
+same URL is unaffected, since that only ever calls `fetch`, not geolocation.
+
+Fix: put a real HTTPS URL in front of the server with a quick Cloudflare
+Tunnel — no account, no config, no certificate to accept:
+
+```bash
+# install once — macOS: brew install cloudflared
+# Windows: winget install --id Cloudflare.cloudflared
+# Linux: download the binary from github.com/cloudflare/cloudflared/releases
+
+cloudflared tunnel --url http://localhost:3000
+```
+
+This prints a `https://<random>.trycloudflare.com` URL after a few seconds.
+Open that URL directly — on the host device *and* the viewer device, on any
+network, not just the same Wi-Fi. `app.set("trust proxy", true)` in
+`server.ts` means the share link the host page shows is already the correct
+`https://...trycloudflare.com/...` link once you're on that URL — no more
+manually swapping `localhost` for a LAN IP.
+
 ## Design decisions worth flagging
 
 **State machine shape.** The directive draws the states as one straight line.
@@ -173,6 +199,16 @@ decision — they only display one already made in `domain/`.
   public, unauthenticated, well-documented API; should work as-is on your
   laptop's normal internet connection, but it's the one piece worth an
   extra look when you test.
+- Geolocation requires a secure origin (HTTPS or localhost) — a phone
+  hosting via a plain `http://<LAN-IP>` URL gets "Only secure origins are
+  allowed" from the browser itself, before the app even asks for
+  permission. Fixed the *symptom* that would otherwise follow this (a
+  share link that still says `http://localhost` even when correctly
+  reached through an HTTPS tunnel) with `app.set("trust proxy", true)`, and
+  documented the actual fix — a Cloudflare Quick Tunnel — above. Verified
+  the header handling with a simulated `X-Forwarded-Proto: https` request;
+  the tunnel tool itself isn't something this sandbox can establish an
+  outbound connection through, so that part needs confirming on your end.
 
 ## Not yet built
 

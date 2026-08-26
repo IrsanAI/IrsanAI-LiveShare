@@ -44,6 +44,12 @@ eventBus.subscribe((event) => {
 });
 
 const app = express();
+// Testing-only setting: trusts X-Forwarded-Proto from any proxy, which is
+// what lets baseUrl() correctly build an https:// share link when this
+// server is reached through a tunnel (e.g. `npx untun tunnel --url
+// http://localhost:3000`). A real internet-facing deployment should trust
+// specific proxy IPs instead of `true`.
+app.set("trust proxy", true);
 app.use(express.json());
 
 function asyncRoute(handler: (req: Request, res: Response) => Promise<void>) {
