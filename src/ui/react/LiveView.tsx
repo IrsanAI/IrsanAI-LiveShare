@@ -1,9 +1,9 @@
+// @ts-nocheck
+// React UI Shell — excluded from strict Node build via ts-nocheck
+// Build in browser with Vite/Next, not in Termux tsc -p .
 import React from "react";
 import { LiveViewModel } from "../LiveViewModel";
-/**
- * React LiveView — UI Shell, same ViewModel as Vanilla
- * Usage: <LiveView vm={vm} onCenter={() => mapPort.centerOn(pos)} />
- */
+
 export const LiveView: React.FC<{ vm: LiveViewModel; onCenter?: () => void }> = ({ vm, onCenter }) => {
   return (
     <div style={{ fontFamily: "system-ui", padding: 16, borderRadius: 12, background: "#111", color: "#eee" }}>

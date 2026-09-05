@@ -12,7 +12,11 @@ export class OpenRouterProvider implements LlmPort {
     });
     const data: any = await res.json();
     const content = data.choices?.[0]?.message?.content ?? "";
-    const cost = data.usage ? (data.usage.prompt_tokens * 0.003 + data.usage.completion_tokens * 0.015)/1000 : undefined;
-    return { content, model: this.model, costUsd: cost, latencyMs: Date.now() - start };
+    const usage = data.usage;
+    const response: LlmResponse = { content, model: this.model, latencyMs: Date.now() - start };
+    if (usage) {
+      response.costUsd = (usage.prompt_tokens * 0.003 + usage.completion_tokens * 0.015)/1000;
+    }
+    return response;
   }
 }
