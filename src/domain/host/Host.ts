@@ -1,4 +1,3 @@
-import { DomainEvent } from "../shared/DomainEvent";
 export type HostId = string;
 export interface Host {
   id: HostId;
@@ -6,9 +5,12 @@ export interface Host {
   avatarUrl?: string;
   createdAt: string;
 }
-export const createHost = (displayName: string, avatarUrl?: string): Host => ({
-  id: `host_${Math.random().toString(36).slice(2,10)}`,
-  displayName,
-  avatarUrl,
-  createdAt: new Date().toISOString(),
-});
+export const createHost = (displayName: string, avatarUrl?: string): Host => {
+  const host: Host = {
+    id: `host_${Math.random().toString(36).slice(2,10)}`,
+    displayName,
+    createdAt: new Date().toISOString(),
+  };
+  if (avatarUrl) host.avatarUrl = avatarUrl;
+  return host;
+};

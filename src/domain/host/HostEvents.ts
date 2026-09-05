@@ -3,10 +3,11 @@ export type HostEventType = "host.created" | "host.joined_session" | "host.left_
 export interface HostEvent extends DomainEvent {
   type: HostEventType;
   hostId: string;
-  sessionId?: string;
+  sessionId: string;
 }
 export const createHostJoinedEvent = (hostId: string, sessionId: string): HostEvent => ({
-  type: "host.joined_session", hostId, sessionId,
-  occurredAt: new Date().toISOString(),
-  eventId: `evt_${Math.random().toString(36).slice(2)}`,
+  type: "host.joined_session",
+  hostId,
+  sessionId,
+  occurredAt: new Date(),
 } as HostEvent);
