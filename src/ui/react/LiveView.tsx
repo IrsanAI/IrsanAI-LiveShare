@@ -1,5 +1,5 @@
-// @ts-nocheck
-// React UI Shell — excluded from strict Node build via ts-nocheck
+
+
 // Build in browser with Vite/Next, not in Termux tsc -p .
 import React from "react";
 import { LiveViewModel } from "../LiveViewModel";
