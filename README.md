@@ -218,3 +218,35 @@ currently uses client-side polling every 3s — simple and works fine for
 testing, but a real app would want push so the phone isn't asking "anything
 new?" on a timer). Multiple destinations/waypoints — see the design-decisions
 note above.
+
+## 2030 Scaffold (experimental) — nicht verdrahtet, nicht getestet, kein Teil des live-getesteten Produkts
+
+Folgende Module liegen als Scaffold für zukünftige IrsanAI-Repos im Baum.
+Sie werden von keinem der beiden Einstiegspunkte des aktuellen Produkts
+(`dist/demo.js`, `dist/interfaces/http/server.js`) zur Laufzeit erreicht —
+verifiziert per Import-Grep gegen den kompletten getesteten Kern
+(`domain/session`, `domain/tracking`, `domain/sharing`, `domain/viewer`,
+`interfaces/http`, `ui/personality`, `ui/host`, `ui/viewer`, `ui/landing`):
+
+- `src/infrastructure/llm/` (`LlmPort.ts`, `ByokLadder.ts`, `OllamaProvider.ts`, `OpenRouterProvider.ts`) — Ollama local cost 0 → OpenRouter Fallback
+- `src/infrastructure/audit/` (`AuditTrail.ts`, `FileSystemAuditRepository.ts`) — JSONL hashPrev für EU AI Act Art.53
+- `src/mcp/` (`McpServer.ts`, `tools/createSessionTool.ts`, `tools/addPositionTool.ts`) — MCP Port
+- `src/domain/map/MapPort.ts`, `src/infrastructure/map/{TextMap,Leaflet,Google}Renderer.ts`, `src/application/map/MapApplicationService.ts` — Map is a Port
+
+Ausnahme: Die Map-Familie ist nicht komplett isoliert wie die anderen drei —
+`src/ui/LiveViewModel.ts` importiert einen Typ aus `MapPort.ts` und wird
+selbst von `src/ui/vanilla/VanillaRenderer.ts` und `src/ui/react/LiveView.tsx`
+importiert. Diese Kette bleibt vollständig innerhalb des experimentellen
+UI-Shells und wird vom getesteten Produkt nicht berührt — aber intern
+verdrahtet, nicht komplett tot.
+
+Alle genannten Dateien werden von `tsc -p .` mitkompiliert (liegen als `.js`
+in `dist/`), aber nie zur Laufzeit von `demo.js` oder `server.js` erreicht —
+kompiliert ≠ ausgeführt. Kein "GAP CLOSED" mehr daraus machen, bis sie
+wirklich verdrahtet und getestet sind.
+
+Design-Prinzip bleibt: Session First, Ports austauschbar, Cost-per-Task, DAD.
+
+---
+Verifiziert von Claude auf v0.5.2 Stand: Import-Grep über kompletten Baum,
+Build grün, Demo + HTTP-Server (Host, Ziel setzen, GPS, Viewer-JSON) live getestet.
