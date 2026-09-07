@@ -1,12 +1,13 @@
 {
   "name": "irsanai-live-share",
-  "version": "0.1.0",
+  "version": "0.5.3",
   "private": true,
-  "description": "IrsanAI Live Share — local-first, session-driven live sharing. Domain scaffold + a minimal HTTP server for real-device testing.",
+  "description": "IrsanAI Live Share — local-first, session-driven live sharing. Domain scaffold + minimal HTTP server for real-device testing. v0.5.3 verifiziert: Build grün, Demo + HTTP live, 2030 Scaffold experimental.",
   "scripts": {
     "build": "tsc -p .",
     "demo": "npm run build && node dist/demo.js",
-    "start": "npm run build && node dist/interfaces/http/server.js"
+    "start": "npm run build && node dist/interfaces/http/server.js",
+    "live": "npm run build && node dist/interfaces/http/server.js"
   },
   "dependencies": {
     "express": "^4.21.2"
