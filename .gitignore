@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.log
 .DS_Store
+# htmls ignorieren, aber cockpits erlauben (portable 100% überall GRÜN)
 *.html
-cockpits/
-irsa_*.html
+!cockpits/
+!cockpits/*.html
