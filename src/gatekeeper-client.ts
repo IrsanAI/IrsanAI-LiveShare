@@ -5,7 +5,7 @@ export async function fetchEGRegistry(){
   const results=await Promise.all(ids.map(async id=>{const res=await fetch(EG_BASE+'/'+id+'.json'); if(!res.ok) throw new Error('Failed fetch '+id); return res.json()}))
   return results
 }
-export async function gatekeep(essenceGuess){
+export async function gatekeep(essenceGuess: string){
   const registry=await fetchEGRegistry()
   let best=null; let bestScore=0
   for(const e of registry){
